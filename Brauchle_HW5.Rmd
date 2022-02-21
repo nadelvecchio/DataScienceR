@@ -1,0 +1,207 @@
+---
+title: "Brauchle_HW5"
+author: "Natascha Brauchle"
+date: "March 2, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ISLR)
+library(glmnet)
+library(pls)
+library(leaps)
+```
+
+
+**(1)** 
+  *(a)* Best subset will have the best training RSS because it has the most greedy approach.  
+  *(b)* Backward step selection may have the smallest test RSS  because it is the least flexible and thus less likely to overfit the training set. However, it is difficult to determine exactly which one is best, as best subset may actually perform best if it does not overfit.  
+  
+  *(c)*   
+  *(i)* True  
+  *(ii)* True  
+  *(iii)* False  
+  *(iv)* False  
+  *(v)* False
+  
+  
+**(2)**  
+ *(b)* (iii) Is true because it is less flexible.
+ 
+
+**(4)**  
+  *(a)* (iii) Steadily increase. As $\lambda$ increases, $\beta$s will become more restricted and will deviate from their least squares estimates, and cause the model to become less flexible.  
+  *(b)* (ii)  Decrease initially, and then eventually start increasing in a U shape. AS we increase $\lambda$ from 0, the $\beta$s will initially deviate more. However, as is typical for test RSS, it will decrease until increasing again.  
+  *(c)* (iv)  Steadily Decrease. AS $\lambda$ increases, the model becomes less flexible.   
+  *(d)* (iii)  Steadily increase. Again, the model becomes less flexible, which means that bias increases.  
+  *(e)*(v)  Remain constant, because irreducible error is unaffected by parameters in the model.   
+  
+model$beta[0]
+**(9)**  
+ *(a)*
+```{r}
+college <- read.csv("Datasets/College.csv", header = TRUE)
+college <- college[,-1]
+set.seed(1) 
+subset <- sample(nrow(college), nrow(college)*.7)
+train = college[subset,]
+test <- college[-subset,]
+
+```
+ 
+ 
+  *(b)*  The test error for linear regression is 996667.4. 
+```{r}
+
+lm.1 <- lm(Apps ~ ., data = train)
+summary(lm.1)
+p.apps <- predict(lm.1, test)
+test.lm.error <- mean((test$Apps - p.apps)^2)
+test.lm.error
+
+lm.1$coefficients[1]
+```
+
+ 
+  *(c)* The test error for ridge regression is 999866.3, with a cross-validated lambda chosen as 431.7652. The graph shows that this lambda gives the smallest MSE.  
+```{r}
+train_matrix = model.matrix(Apps~., data = train)
+test_matrix = model.matrix(Apps~ ., data = test)
+cv.out <- cv.glmnet(train_matrix, train$Apps, alpha=0) 
+plot(cv.out) 
+
+bestlam = cv.out$lambda.min
+bestlam
+
+ridge.mod <- glmnet(train_matrix, train$Apps, alpha = 0, lambda = bestlam)
+
+ridge.pred <- predict(ridge.mod, s = bestlam, newx = test_matrix)
+test.ridge.error <- mean((ridge.pred - test$Apps)^2)
+test.ridge.error
+```
+
+
+  *(d)* The test error for lasso regression is 1005526, with a cross-validated lambda chosen as 31.17694. The graph shows that this lambda gives the smallest MSE. 
+```{r}
+cv.out <- cv.glmnet(train_matrix, train$Apps, alpha=1) 
+plot(cv.out) 
+bestlam =cv.out$lambda.min
+bestlam
+lasso.mod <- glmnet(train_matrix, train$Apps, alpha = 1, lambda = bestlam)
+lasso.pred <- predict(lasso.mod, s = bestlam, newx = test_matrix)
+test.lasso.error <- mean((lasso.pred - test$Apps)^2)
+test.lasso.error
+```
+
+  *(e)* The test error for principal components regression is 996667.4, with a cross-validated M chosen as 17. The graph shows that this M gives the smallest MSE. 
+```{r}
+#pcr
+pcr.fit <- pcr(Apps~., data = train, scale = TRUE, validation = "CV")
+summary(pcr.fit)
+validationplot(pcr.fit, val.type = "MSEP")
+pcr.pred = predict(pcr.fit, test, ncomp = 17)
+test.pcr.error <- mean((pcr.pred - test$Apps)^2)
+test.pcr.error
+```
+
+  *(f)* The test error for partial least-squares regression is 997380.4, with a cross-validated M chosen as 11. The graph shows that this M gives the smallest MSE. 
+```{r}
+set.seed(1)
+pls.fit <- plsr(Apps ~ ., data=train, scale=TRUE, validation="CV")
+
+summary(pls.fit) 
+
+validationplot(pls.fit ,val.type="MSEP")
+pls.pred = predict (pls.fit, test, ncomp = 11) 
+test.pls.error <- mean((pls.pred -test$Apps)^2)
+test.pls.error
+```
+
+
+ *(g)* To compare test prediction accuracy, we will use the root mean-square error. The RMSE of linear regression, ridge regression, lasso regression, principal component regression, and partial least-squares regression are 998.33, 999.93, 1002.76, 998.33, 998.69, respectively. Linear regression and principal component analysis performed the same. There are very small differences between the models, though lasso regression performed the worst. 
+ 
+```{r}
+# Calculate R^2 values
+
+avg <- mean(test$Apps)
+lm.rmse <- sqrt(test.lm.error)
+ridge.rmse <- sqrt(test.ridge.error)
+lasso.rmse <- sqrt(test.lasso.error)
+pcr.rmse <- sqrt(test.pcr.error)
+pls.rmse <- sqrt(test.pls.error)
+
+rmse <- c(lm.rmse, ridge.rmse, lasso.rmse, pcr.rmse, pls.rmse)
+rmse
+
+```
+
+
+**(10)**
+  *(a)*
+```{r}
+set.seed(1)
+p = 20
+n = 1000
+
+error <- sample(-1:10, n, replace = TRUE)
+x <- matrix(rnorm(n*p),n, p)
+b <- sample(-5:5, p, replace = TRUE)
+b_0 <- sample(1:p, 4, replace = FALSE)
+for (i in b_0){
+  b[i] <- 0
+}
+
+y <- x %*% b + error
+
+```
+
+  *(b)*
+```{r}
+subset <- sample(1:1000, 100, replace = FALSE)
+
+q_10 <- data.frame(y, x)
+train <- q_10[subset,]
+test <- q_10[-subset,]
+
+```
+
+
+  *(c)* As expected, the training MSE continually decreases as variables are added to the model. However, this likely causes overfitting. 
+```{r}
+predict.regsubsets <- function(object, newdata, id, ...){
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefi <- coef(object, id=id)
+  xvars <- names(coefi)
+  mat[,xvars]%*%coefi
+}
+best.fit <- regsubsets(y~., data = train, nvmax = 20)
+error <- rep(NA, 20)
+for (i in 1:20) {
+  pred <- predict(best.fit, train, id = i)
+  error[i] <- mean((train$y - pred)^2)
+}
+
+plot(1:20, error, type = "b", xlab = "# of Predictors")
+```
+
+
+  *(d)* Performance improves pretty drastically until we have about 12-13 predictors in the model. At that point, there are marginal improvements in the MSE. 
+```{r}
+error <- rep(NA, 20)
+for (i in 1:20) {
+  pred <- predict(best.fit, test, id = i)
+  error[i] <- mean((test$y - pred)^2)
+}
+
+plot(1:20, error, type = "b", xlab = "# of Predictors")
+
+```
+
+  *(e)* The smallest MSE in the test dataset is with 16 predictors. However, as discussed above, this minimum is marginally better than an MSE with only 12 predictors. 
+  
+```{r}
+which.min(error)
+```

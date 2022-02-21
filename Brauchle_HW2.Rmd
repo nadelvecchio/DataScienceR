@@ -1,0 +1,298 @@
+---
+title: "Brauchle_HW2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+ccc
+# import dataset
+Auto <- read.csv("Datasets/Auto.csv", 
+                 stringsAsFactors = TRUE, 
+                 na.strings = "?") 
+```
+
+
+  3a. 	Provided the GPA is high enough, males earn more on average than women.  
+	3b.  (Salary) = 50 + 20 * 4.0 + 0.07 * 110 + 35 + 0.01 * (4.0*110) - 10 * (4.0) = 137.1  
+	3c.  False, because we would need information on the standard error of the interaction to find a probability of the hypothesis $\beta_{i}$ = 0.   
+
+
+8. 
+
+```{r}
+#8a i - iii
+auto_slm <- lm(mpg ~ horsepower, data = Auto)
+summary(auto_slm)
+
+#8aiv
+predict (auto_slm ,data.frame(horsepower = 98), interval="confidence")
+predict (auto_slm ,data.frame(horsepower = 98), interval="prediction")
+```
+8a.
+    i.	There is a linear relationship between horsepower and mpg (p < 0.05).  
+    ii.	The relationship is not particularly strong with a R-squared of 0.1767.   
+    iii.The relationship between horsepower and mpg is negative. With every one unit increase in horsepower, mpg decreases by 0.158.   
+    iv. A horsepower of 98 will have a predicted mpg of 24.47 mpg. The 95% confidence interval is (23.97308, 24.96108) and the 95% prediction interval is (14.8094, 34.12476).
+    
+ 
+```{r}
+
+#8b
+plot(Auto$horsepower, Auto$mpg) 
+abline(auto_slm, lwd = 2, col = "blue")
+```
+  
+  8b.  A line fits the data pretty well, but we do see the data curve at high values of horsepower.
+
+```{r}
+
+#8c
+par(mfrow=c(2,2))
+plot(auto_slm)
+
+
+```
+
+ 8c. The residuals v fitted plot shows funneling and a curvilinear pattern. There also appear to be observations with a significant pull, particularly observation 117, based on the residuals vs. leverage plot.
+    
+    
+9.  
+
+```{r}
+
+#9a
+
+pairs(Auto)
+
+```
+
+   9a. There appears to be relationships between mpg and displacement, horsepower, and weight. They appear to be mostly linear, but with a slight curve. 
+
+```{r}
+#9b
+auto_noname <- Auto %>% dplyr::select(-name)
+cor(auto_noname, use = "complete.obs")
+
+```
+
+  
+  9b. Considering |r| > 0.8 as having a strong linear relationship, mpg has a strong linear relationship with displacement and weight. Similarly, cylinders also has a strong linear relationship with displacement, horsepower, and weight. Displacement also has a strong relationship with horsepower and weight. Horsepower also has a strong relationship with weight. 
+
+```{r}
+#9c
+all_auto_lm <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + year + origin, data = Auto)
+summary(all_auto_lm)
+
+```
+
+  
+  9c. 
+    i. The overall model is significant (F = 252.4, p << 0.05), and it has a high Adjusted R-squared of 81.82%. Therefore, the predictors appear to have a strong linear relationship with mpg.  
+    ii. Displacement, Weight, Year, and Origin appear to have a significant linear relationship with mpg.  
+    iii. For every one year, mpg increased by 0.751 mpg.  
+
+
+
+```{r}
+#9d 
+par(mfrow=c(2,2))
+plot(all_auto_lm)
+```
+
+  9d. The Residuals vs Fitted plot shows that the relationship does appear to have a curvilinear pattern, and the leverage plot points to observation 14 as having unusually high leverage. 
+  
+```{r}
+int_model_1 <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + year + origin + cylinders:weight + displacement*weight, data = Auto)
+summary(int_model_1)
+
+
+```
+
+  9e. The two models show that cylinders and weight do not have an interaction (t = -0.229, p > 0.05), but that displacement and weight does have an interaction, meaning that weight affects the slope of displacemnet on mpg (t = 3.90, p < 0.05). In the second model we see that cylinders and horsepower have a significant interaction (t = 2.95, p < 0.05), as does horsepower and weight (t = 2.83, p < 0.05). The second model also has a higher Adjusted R-squared. 
+  
+```{r}
+
+p1 <- Auto %>% ggplot(aes(horsepower, mpg)) + geom_point()
+p2 <- Auto %>% ggplot(aes(sqrt(horsepower), mpg)) + geom_point()
+p3 <- Auto %>% ggplot(aes(log(horsepower), mpg)) + geom_point()
+p4 <- Auto %>% ggplot(aes((horsepower)^(1/3), mpg)) + geom_point()
+
+p5 <- Auto %>% ggplot(aes(weight, mpg)) + geom_point()
+p6 <- Auto %>% ggplot(aes(sqrt(weight), mpg)) + geom_point()
+p7 <- Auto %>% ggplot(aes(log(weight), mpg)) + geom_point()
+p8 <- Auto %>% ggplot(aes((weight)^(1/3), mpg)) + geom_point()
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8)
+
+
+```
+  
+  
+   9f. From the plots above we see that a log transformation of horsepower and a cuberoot transformation of weight would make the data the most linear. 
+
+14. 
+
+```{r}
+#14a 
+set.seed(1) 
+x1=runif (100) 
+x2=0.5*x1+rnorm (100)/10 
+y=2+2*x1+0.3*x2+rnorm (100)
+
+```
+
+
+  14a. The form of the linear model is $Y=2+2X_{1}+0.3X_{2}+ \epsilon$, where $\epsilon$ ~ N(0,1). The correlation coefficients are as follows: $\beta_{0}$ = 2, $\beta_{1}$ = 2, $\beta_{2}$ = 0.3. 
+
+```{r}
+
+# 14b
+cor(x1, x2)
+plot(x1, x2)
+
+```
+
+  14b. $X_{1}$ and $X_{2}$ have a correlation of 0.835, and the scatterplot confirms a strong, positive linear trend. 
+
+```{r}
+#14c
+col_lm <- lm(y ~ x1 + x2)
+summary(col_lm)
+```
+
+  14c.  $\hat{B_{0}}$ = 2.13, $\hat{B_{1}}$ = 1.44, and $\hat{B_{0}}$ = 1.01, which is quite different from the true values. The null hypothesis $\beta_{1} = 0$ can be rejected (t = 1.996, p < 0.05). However, the null hypothesis $\beta_{2} = 0$ can not be rejected (t = 0.891, p > 0.05). 
+
+```{r}
+#14d 
+col_lm_2 <- lm(y ~ x1)
+summary(col_lm_2)
+```
+
+  14d. $\hat{B_{0}}$ = 2.11 and $\hat{B_{1}}$ = 1.98, which is closer to the true values. We can also reject the null hypothesis $\beta_{1} = 0$ with t = 4.986, p << 0.05. 
+
+```{r}
+#14e
+col_lm_3 <- lm(y ~ x2)
+summary(col_lm_3)
+```
+  
+  
+   14e. $\hat{B_{0}}$ = 2.39 and $\hat{B_{1}}$ = 2.90. We can also reject the null hypothesis $\beta_{1} = 0$ with t = 4.58, p << 0.05.  
+   14f. The results do not contradict each other because $X_{1}$ and $X_{2}$ are correlated, thus reducing the power of the test. This makes it more difficult to understand how they are individually related to the dependent variable, and also increases the standard error.
+
+
+```{r}
+# 14g 
+x1=c(x1, 0.1) 
+x2=c(x2, 0.8) 
+y=c(y,6)
+
+col_lm <- lm(y ~ x1 + x2)
+summary(col_lm)
+
+col_lm_2 <- lm(y ~ x1)
+summary(col_lm_2)
+
+col_lm_3 <- lm(y ~ x2)
+summary(col_lm_3)
+
+par(mfrow=c(2,2))
+plot(col_lm)
+par(mfrow=c(2,2))
+plot(col_lm_2)
+par(mfrow=c(2,2))
+plot(col_lm_3)
+```
+
+
+  g. In the full model, the new point reduces the slope of both $X_{1}$ and $X_{2}$; further, $X_{2}$ is now a significant predictor, and not $X_{1}$ as before. For the model with only $X_{1}$  as a predictor, $\hat{B_{1}}$ = 1.57 and it is still significant (t = 3.69, p < 0.05). For the model with only $X_{2}$ as a predictor, $\hat{B_{1}}$ = 3.30 and it is still significant (t = 5.70, p < 0.05). This new observation is a high leverage point and an outlier for the full model, and just has high leverage for the model with only $X_{2}$ as a predictor.
+  
+```{r, results = "hide"}
+library(MASS)
+Boston
+```
+
+
+15. 
+
+```{r}
+names(Boston)
+
+lapply(c("zn", "indus", "nox", "chas", "rm", "age", "dis", "rad", "tax", "ptratio", "black", "lstat", "medv"),
+
+       function(var) {
+
+           formula    <- as.formula(paste("crim ~", var))
+           boston_lm <- lm(formula, data = Boston)
+           summary(boston_lm)
+       })
+
+p1 <- Boston %>% ggplot(aes(zn, crim)) + geom_point()
+p2 <- Boston %>% ggplot(aes(indus, crim)) + geom_point()
+p3 <- Boston %>% ggplot(aes(nox, crim)) + geom_point()
+p4 <- Boston %>% ggplot(aes(rm, crim)) + geom_point()
+p5 <- Boston %>% ggplot(aes(age, crim)) + geom_point()
+p6 <- Boston %>% ggplot(aes(dis, crim)) + geom_point()
+p7 <- Boston %>% ggplot(aes(rad, crim)) + geom_point()
+p8 <- Boston %>% ggplot(aes(tax, crim)) + geom_point()
+p9 <- Boston %>% ggplot(aes(ptratio, crim)) + geom_point()
+p10 <- Boston %>% ggplot(aes(black, crim)) + geom_point()
+p11 <- Boston %>% ggplot(aes(lstat, crim)) + geom_point()
+p12 <- Boston %>% ggplot(aes(medv, crim)) + geom_point()
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12)
+
+```
+
+ 
+  15a. zn, indus, nox, rm, age, dis, rad, tax, ptratio, black, lstat, medv are all significant predictors of crime. The scatterplots show that a lot of the variables have outliers. However, of note, dis appears to be negatively related with crime and lstat, rm, and age are positively correlated with crime. 
+
+  
+```{r}
+full_crime_lm <- lm(crim ~ ., data = Boston)
+summary(full_crime_lm)
+
+```
+ 
+ 
+  15b. In the full model, we see that only zn, dis, rad, black, and medv are significantly related to crime and we can reject the null hypothesis $\beta_{i}$ = 0. 
+
+
+```{r}
+#15c zn, indus, nox, rm, age, dis, rad, tax, ptratio, black, lstat, medv
+
+indvar <- c("zn", "indus", "nox", "rm", "age", "dis", "rad", "tax", "ptratio", "black", "lstat", "medv")
+x_betas <- lapply(indvar, function(dv) {
+    boston_lm <- lm(crim ~ get(dv), data = Boston)
+    boston_lm$coefficients[2]
+})
+
+
+y_betas <- full_crime_lm$coefficients
+y_betas <- y_betas[-c(1,4)]
+
+plot(x_betas, y_betas)
+
+```
+ 
+ 
+  15c. Fewer of the variables are significantly related to crime in the full model than in the univariate regressions. As multicollinearity reduces power, this may be a reason fewer are significant. The plot also shows that the betas are not the same, which may be related to the interpretation of a multiple regression vs. a simple regression. In simple regression, we do not take other predictors into account and get the base average increase of a dependent variable given the predictor. in contrast, a multiple regression gives the average increase in the dependent variable *while holding the other variables constant.*
+  
+```{r}
+#15d
+lm_zn <- lm(crim ~ poly(zn, 3), data = Boston)
+
+
+
+
+indvar <- c("zn", "indus", "nox", "rm", "age", "dis", "rad", "tax", "ptratio", "black", "lstat", "medv")
+lapply(indvar, function(var) {
+    boston_lm <- lm(crim ~ poly(get(var), 3), data = Boston)
+    summary(boston_lm)
+    
+})
+
+```
+
+
+15d. All of the models significantly predicted crime, and the Adjusted R-squared of the polynomial models is also generally greater than for the simple linear regression. 

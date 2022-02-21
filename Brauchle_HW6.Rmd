@@ -1,0 +1,218 @@
+---
+title: "Brauchle_HW6"
+author: "Natascha Brauchle"
+date: "March 26, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+library(boot)
+```
+
+
+6a.    
+The degree of the polynomial chosen by cross-validation is 4, which actually matches the results of ANOVA. The output from ANOVA shows that there are marginal improvements in error when increasing the degree of the polynomial past 4, so we choose 4 as our degree.  
+  
+
+The polynomial fits the data decently well, but does not capture the points hovering above the main curve. 
+
+```{r}
+wage <- Wage
+
+set.seed(1)
+cv.error=rep(1,10)
+for (i in 1:10){
+  glm.fit=glm(wage ~ poly(age,i), data=wage) 
+  cv.error[i]=cv.glm(wage, glm.fit, K=10)$delta [1] 
+  }
+cv.error
+plot(cv.error, type = 'b')
+
+# anova
+fit1 <- glm(wage ~ poly(age, 1), data = wage)
+fit2 <- glm(wage ~ poly(age, 2), data = wage)
+fit3 <- glm(wage ~ poly(age, 3), data = wage)
+fit4 <- glm(wage ~ poly(age, 4), data = wage)
+fit5 <- glm(wage ~ poly(age, 5), data = wage)
+fit6 <- glm(wage ~ poly(age, 6), data = wage)
+fit7 <- glm(wage ~ poly(age, 7), data = wage)
+fit8 <- glm(wage ~ poly(age, 8), data = wage)
+fit9 <- glm(wage ~ poly(age, 9), data = wage)
+fit10 <- glm(wage ~ poly(age, 10), data = wage)
+anova(fit1, fit2, fit3, fit4, fit5, fit6, fit7, fit8, fit9, fit10)
+
+fit = lm(wage ~ poly(age, 4), data = wage) 
+agelims = range(wage$age)
+age.grid = seq(from = agelims[1], to = agelims[2])
+preds = predict(fit, newdata =list(age = age.grid),se=TRUE)
+plot(wage$age, wage$wage, xlim=agelims, cex = .5, col="darkgrey ") 
+lines(age.grid, preds$fit, lwd=2, col="blue") 
+
+```
+
+6b. The best number of cuts according to cross-validation is 8. The step function does not fit the data as well as the polynomial, though it still mimicks the curvature of the data. 
+
+```{r}
+
+cv.error = rep(NA, 10)
+
+for (i in 2:10){
+  wage$age.cut <- cut(wage$age, i)
+  fit <- glm(wage ~ age.cut, data=wage) 
+  cv.error[i] <- cv.glm(wage, fit, K=10)$delta[1] 
+  }
+plot(cv.error, type = 'b')
+
+
+fit <- glm(wage ~ cut(age, 8), data = wage)
+agelims = range(wage$age)
+age.grid = seq(from = agelims[1], to = agelims[2])
+preds = predict(fit, newdata =list(age = age.grid),se=TRUE)
+plot(wage$age, wage$wage, xlim=agelims, cex = .5, col="darkgrey ") 
+lines(age.grid ,preds$fit ,lwd=2,col="blue") 
+
+
+```
+
+
+8. Looking at the scatterplot matrix, we see that there are three variables that appear to have a non-linear relationship with mpg, our chosen outcome variable: displacement, horsepower, and weight. At first, we will fit models with horsepower as the predictor.  
+
+```{r}
+auto <- Auto
+pairs(auto)
+set.seed(1)
+# looks like there's non-linear relationships between mp gand displacement and horsepower and weight
+# polynomials
+names(auto)
+cv.error=rep(0,10)
+
+
+```
+
+
+Using cross-validation, we find that a polynomial of degree 6 best fits the data. The curve closely follows the data, but in practice may indicate overfitting. 
+
+
+```{r}
+# polynomial
+for (i in 1:10){
+  glm.fit=glm(mpg ~ poly(horsepower,i), data=auto) 
+  cv.error[i]=cv.glm(auto, glm.fit, K=10)$delta [1] 
+  }
+cv.error
+plot(cv.error, type = 'b')
+
+fit = lm(mpg ~ poly(horsepower, 6), data = auto) 
+pred_lims = range(auto$horsepower)
+pred.grid = seq(from = pred_lims[1], to = pred_lims[2])
+preds = predict(fit, newdata =list(horsepower = pred.grid),se=TRUE)
+plot(auto$horsepower, auto$mpg, xlim=pred_lims, cex = .5, col="darkgrey ") 
+lines(pred.grid, preds$fit, lwd=2, col="blue") 
+
+```
+
+Using cross-validation, we find that 8 cuts are the best for fitting the data. The step appears to fit the data quite well. 
+
+
+```{r}
+# step funcs
+cv.error = rep(NA, 10)
+
+for (i in 2:10){
+  auto$horsepower.cut <- cut(auto$horsepower, i)
+  fit <- glm(mpg ~ horsepower.cut, data=auto) 
+  cv.error[i] <- cv.glm(auto, fit, K=10)$delta[1] 
+  }
+plot(cv.error, type = 'b')
+
+fit <- glm(mpg ~ cut(horsepower, 8), data = auto)
+pred_lims = range(auto$horsepower)
+pred.grid = seq(from = pred_lims[1], to = pred_lims[2])
+preds = predict(fit, newdata =list(horsepower = pred.grid),se=TRUE)
+plot(auto$horsepower, auto$mpg, xlim=pred_lims, cex = .5, col="darkgrey ") 
+lines(pred.grid, preds$fit, lwd=2, col="blue") 
+
+```
+
+Using cross-validation, we find that 6 degrees of freedom is best for a basic spline. The basic spline is very similar to the polynomial from above, but has heavier tails on the edges. As indicated by the warnings, this indicates extrapolation and so the curve is not reliable on the boundaries. 
+
+```{r}
+# basic spline
+library(splines)
+cv.error = rep(NA, 10)
+for (i in 3:10){
+  fit <- glm(mpg ~ bs(horsepower, degree = i), data = auto) 
+  cv.error[i] <- cv.glm(auto, fit, K=10)$delta[1] 
+  }
+plot(cv.error, type = 'b') 
+
+fit = lm(mpg ~ bs(horsepower, df=6), data=auto)
+
+plot(auto$horsepower, auto$mpg, col="darkgrey")
+pred_lims = range(auto$horsepower)
+pred.grid = seq(from = pred_lims[1], to = pred_lims[2])
+pred = predict(fit, list(horsepower=pred.grid))
+
+lines(pred.grid, pred, col="blue", lwd =2)
+
+```
+
+The cross-validated degrees of freedom for the natural spline is 7. This spline follows subtle patterns in the data more than the basic spline, which may indicate overfitting. However, the curvature on the ends of the spline are not as extreme as in the basic spline, so the boundaries will be more reliable. 
+
+
+```{r}
+
+# natural spline
+
+cv.error = rep(NA, 10)
+for (i in 3:10){
+  fit <- glm(mpg ~ ns(horsepower, df = i), data=auto) 
+  cv.error[i] <- cv.glm(auto, fit, K=10)$delta[1] 
+  }
+plot(cv.error, type = 'b') #7
+
+fit = lm(mpg~ns(horsepower, df=7), data=auto)
+
+plot(auto$horsepower, auto$mpg, col="darkgrey")
+pred_lims = range(auto$horsepower)
+pred.grid = seq(from = pred_lims[1], to = pred_lims[2])
+pred = predict(fit, list(horsepower=pred.grid))
+
+lines(pred.grid, pred, col="blue", lwd =2)
+
+```
+
+
+For this question, we are looking at displacement as the predictor. The cross-validated degrees of freedom for this smoothing spline is 52.733. It follows the data points *very* closely and seems to capture some interesting trends, such as the larger spike around a displacement of 280. 
+
+
+```{r}
+#smooth spline 
+fit = smooth.spline(auto$displacement, auto$mpg, cv = FALSE)
+fit$df
+pred_lims = range(auto$displacement)
+plot(auto$displacement ,auto$mpg,xlim=pred_lims ,cex=.5,col="darkgrey ") 
+lines(fit ,col="red",lwd=2)
+
+```
+
+
+Using the pairs plot from the beginning, we choose to fit horsepower and displacement with non-linear models and year linearly to predict mpg. Since we did not previously calculate the best degree for displacement, we use cross validation for this portion and find that a polynomial of degree 2 would be best. We maintain that a polynomial of degree 6 best explains the horsepower portion of the data. As GAM displays the data in higher dimensions, it is dificult to determine the exact fit, but the individuals graphs of each line provide information about the general shape of each curve.  
+
+```{r}
+# gam 
+library(gam)
+library(akima)
+cv.error = rep(NA, 10)
+for (i in 1:10){
+  fit <- gam(mpg ~ poly(horsepower, 6) + poly(displacement, i) + year, data = auto)
+  cv.error[i] <- cv.glm(auto, fit, K=10)$delta[1] 
+  }
+plot(cv.error, type = 'b') #8
+
+fit <- gam(mpg ~ poly(horsepower, 6) + poly(displacement, 2) + year, data = auto)
+preds=predict (fit,newdata = auto)
+plot.Gam(fit, se=TRUE , col="green")
+```

@@ -1,0 +1,149 @@
+---
+title: "Brauchle_HW8"
+author: "Natascha Brauchle"
+date: "April 8, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+toys <- data.frame("X1" = c(3, 2, 4, 1, 2, 4, 4), "X2" = c(4, 2, 4, 4, 1, 3, 1), Y = c("red", "red", "red", "red", "blue", "blue", "blue"))
+toys %>% ggplot(aes(X1, X2, color = Y)) + geom_point() + scale_color_manual(values = c("blue", "red"))
+```
+*3a.* This is the plot for X1 and X2 with the points colored accordingly. 
+
+
+*3b.* The maximal margin classifier has to be between points (2,1) and (2,2) and (4,4) and (4,3). These halfway points are (2, 1.5) and (4, 3.5). Finding the lines that pass through these points: 
+
+$$ \frac{4 - 2}{3.5 - 1.5} = 1 $$ and $$ 1.5 - 2 = - 0.5 $$
+So the equation of the line is Y = -0.5 + x
+```{r}
+toys %>% ggplot(aes(X1, X2, color = Y)) + geom_point() + scale_color_manual(values = c("blue", "red")) + geom_abline(intercept = -0.5, slope = 1)
+```
+
+*3c. *
+Classify to red if $$0.5 + X_{1} - X_{2} < 0 $$ and blue otherwise. 
+
+*3d* Added the margins for the maxial margin hyperplane. 
+```{r}
+toys %>% ggplot(aes(X1, X2, color = Y)) + geom_point() + scale_color_manual(values = c("blue", "red")) + geom_abline(intercept = -0.5, slope = 1) + geom_abline(intercept = -1, slope = 1, linetype = 'dotted') + geom_abline(intercept = 0, slope = 1, linetype = 'dotted')
+```
+
+```{r}
+
+supports <- toys %>% filter(row_number() %in% c(1, 3, 5, 2))
+supports
+  ggplot(toys, aes(X1, X2, color = Y)) + geom_point() + 
+  scale_color_manual(values = c("blue", "red")) + 
+  geom_abline(intercept = -0.5, slope = 1) + 
+  geom_abline(intercept = -1, slope = 1, linetype = 'dotted') + 
+  geom_abline(intercept = 0, slope = 1, linetype = 'dotted') +
+  geom_point(data = supports, aes(x = X1, y =  X2, size = 4), shape = 8)
+
+```
+*3e.* The support vector points are marked by the stars. 
+
+*3f.* The seventh observation is not a support vector, so it will not change the optimal location of the maximal margin hyperplane. 
+
+```{r}
+  ggplot(toys, aes(X1, X2, color = Y)) + geom_point() + 
+  scale_color_manual(values = c("blue", "red")) + 
+  geom_abline(intercept = 0, slope = 0.8) + 
+  geom_point(data = supports, aes(x = X1, y =  X2, size = 4), shape = 8)
+```
+
+*3g* This hyperplane with the equation $$0.8*X_{1} - X_{2} > 0 $$ separates the observations correctly, but does not maximize the distance in between them. 
+
+```{r}
+  ggplot(toys, aes(X1, X2, color = Y)) + geom_point() + 
+  scale_color_manual(values = c("blue", "red")) + 
+  geom_abline(intercept = 0, slope = 0.8) + 
+  geom_point(data = data.frame("X1" = 1.5, "X2" = 3.5, Y = "blue"), shape = 8)
+
+```
+*3h.* As shown in the plot, the new, blue point designated with a star prevents the feature space from being separated perfectly with a hyperplane. 
+
+```{r}
+#7a
+library(dplyr)
+library(ISLR)
+library(e1071)
+med_auto <- median(Auto$mpg)
+auto_mpg <- Auto %>% mutate(gas_mileage = ifelse(Auto$mpg > med_auto, 1, 0))
+
+#7b
+set.seed(1)
+tune.out = tune(svm, as.factor(gas_mileage) ~ ., data = auto_mpg, kernel = "linear", ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
+summary(tune.out)
+```
+*7b.* The best value of cost by cross-validation is 1. 
+
+```{r}
+#7c
+set.seed(1)
+tune.out.radial <- tune(svm, as.factor(gas_mileage) ~ ., data = auto_mpg, kernel = "radial", ranges = list(cost = c(0.01, 0.1, 1, 5, 10, 100), gamma = c(0.01, 0.1, 1, 5, 10, 100)))
+summary(tune.out.radial)
+
+```
+
+
+```{r}
+#7c cont.
+tune.out.poly <- tune(svm, as.factor(gas_mileage) ~ ., data = auto_mpg, kernel = "polynomial", ranges = list(cost = c(0.01, 0.1, 1, 5, 10, 100), degree = c(2,3,4, 5)))
+summary(tune.out.poly)
+
+```
+
+
+*7c.* For the radial svm model, a cost of 100 and a gamma value of 0.01 were determined to be the best by cross-validation. Cross-validation determined a cost of 100 and a degree of 2 for the polynomial svm model. 
+
+*7d.* The plots below show that the SVM with a linear kernel actually performs the best, followed by the radial kernel. The polynomial kernel SVM performs very badly.
+
+```{r}
+#7d 
+
+tune.out = svm(as.factor(gas_mileage) ~ ., data = auto_mpg, kernel = "linear", cost = 1) 
+tune.out.radial <- svm(as.factor(gas_mileage) ~ ., data = auto_mpg, kernel = "radial",cost = 100, gamma =0.01)
+tune.out.poly <- svm(as.factor(gas_mileage) ~ ., data = auto_mpg, kernel = "polynomial", cost = 100, degree = 2)
+names(auto_mpg)
+
+# linear plots
+plot(tune.out, auto_mpg, mpg~cylinders)
+plot(tune.out, auto_mpg, mpg~displacement)
+plot(tune.out, auto_mpg, mpg~horsepower)
+plot(tune.out, auto_mpg, mpg~weight)
+plot(tune.out, auto_mpg, mpg~acceleration)
+plot(tune.out, auto_mpg, mpg~year)
+
+```
+
+```{r}
+# radial plots
+plot(tune.out.radial, auto_mpg, mpg~cylinders)
+plot(tune.out.radial, auto_mpg, mpg~displacement)
+plot(tune.out.radial, auto_mpg, mpg~horsepower)
+plot(tune.out.radial, auto_mpg, mpg~weight)
+plot(tune.out.radial, auto_mpg, mpg~acceleration)
+plot(tune.out.radial, auto_mpg, mpg~year)
+
+```
+
+```{r}
+#polynomial plots
+plot(tune.out.poly, auto_mpg, mpg~cylinders)
+plot(tune.out.poly, auto_mpg, mpg~displacement)
+plot(tune.out.poly, auto_mpg, mpg~horsepower)
+plot(tune.out.poly, auto_mpg, mpg~weight)
+plot(tune.out.poly, auto_mpg, mpg~acceleration)
+plot(tune.out.poly, auto_mpg, mpg~year)
+```
+
+
+
+
+

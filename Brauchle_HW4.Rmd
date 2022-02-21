@@ -1,0 +1,68 @@
+---
+title: "Brauchle_HW4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ISLR)
+weekly <- Weekly
+```
+
+```{R} 
+a_model <- glm(Direction ~ Lag1 + Lag2, data = Weekly, family = "binomial")
+summary(a_model)
+
+```
+(a) The model including the full dataset only had Lag2 as a significant predictor of Direction (z = 2.27, p < 0.05). 
+
+```{r}
+weekly_2 <- Weekly[-1,]
+b_model <- glm(Direction ~ Lag1 + Lag2, data = weekly_2, family = "binomial")
+summary(b_model)
+```
+(b) Removing the first observation does not change the model very significantly, and Lag2 remains as the only significant predictor of Direction (z = 2.29, p < 0.05). 
+
+```{r}
+#c
+glm.probs = predict(b_model, weekly[1,], type="response") 
+if (glm.probs > 0.5) {
+  pred_dir = "Up"
+}else {
+  pred_dir = "Down"
+}
+pred_dir
+pred_dir == Weekly[1,]$Direction
+
+```
+(c) The first observation was predicted as "Up." However, this observation was not classified correctly, as the true direction of the first observation is "Down."
+
+```{r}
+#d 
+errors = vector()
+for (i in (1:nrow(weekly))) {
+  loop_model <- glm(Direction ~ Lag1 + Lag2, data = Weekly[-i,], family = "binomial")
+  glm.probs = predict(loop_model, weekly[i,], type="response")
+  
+  if (glm.probs > 0.5) {
+    pred_dir = "Up"
+  } else {
+    pred_dir = "Down"
+  }
+
+  if (pred_dir != Weekly[i,]$Direction){
+    errors[i] = 1
+  } else {
+    errors[i] = 0
+  }
+}
+errors
+```
+
+
+```{r}
+mean(errors)
+```
+
+(e) Using the leave-one-out-cross-validation method produced an error estimate of 45%, so only about 55% of observations were classified correctly. 

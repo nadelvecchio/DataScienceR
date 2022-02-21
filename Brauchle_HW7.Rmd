@@ -1,0 +1,244 @@
+---
+title: "Brauchle_HW7"
+author: "Natascha Brauchle"
+date: "April 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ISLR)
+library(MASS)
+library(randomForest)
+```
+
+
+```{r}
+#3
+p <- seq(0, 1, 0.01)
+gini <- 2*p*(1-p)
+entropy <- -(p*log(p) + (1-p)*log(1-p))
+error <- 1 - pmax(p, 1-p)
+
+plot(NA, NA, xlim = c(0,1), ylim = c(0,1), xlab = 'p', ylab = 'index')
+lines(p, gini, type = 'l', col = "green")
+lines(p, entropy, col = 'blue')
+lines(p, error, col = 'red')
+legend(x= "topright", legend = c("gini", "entropy", "error"), col = c("green", "blue", "red" ), lty =1)
+```
+3. Entropy MSE is always the largest, followed by gini, and then followed by classification error. They are maximized when p = 0.5.
+
+```{r}
+#7
+set.seed(1)
+np <- ncol(Boston) - 1
+
+sample_set <- sample(1:nrow(Boston), nrow(Boston) / 2)
+Boston.train <- Boston[sample_set, -14]
+Boston.test <- Boston[-sample_set, -14]
+Y.train <- Boston[sample_set, 14]
+Y.test <- Boston[-sample_set, 14]
+
+mse <- matrix(nrow = 500)
+mtry_set <- c(np, np/2, sqrt(np))
+for (i in mtry_set){
+  rf.boston <- randomForest(Boston.train, y = Y.train, xtest = Boston.test, ytest = Y.test, mtry = i, ntree = 500)
+  mse_loop <- rf.boston$test$mse
+  mse <- cbind(mse, mse_loop)
+}
+
+plot(1:500, mse[,2], col = "green", type = "l", xlab = "Number of Trees", ylab = "Test MSE", ylim = c(10,19))
+lines(1:500, mse[,3], col = "red", type = "l")
+lines(1:500, mse[,4], col = "blue", type = "l")
+legend("topright", c("m = p", "m = p/2", "m = sqrt(p)"), col = c("green", "red", "blue"), cex = 1, lty = 1)
+```
+
+7. The test MSE according to the number of trees levels out relatively early on (ntrees ~ 20). The test error is always the highest when using as many trees as there are predictor variables, and is the smallest when using half of the number of predictor variables. 
+
+
+```{r}
+#9
+#a 
+set.seed(1)
+sample_set <- sample(1:nrow(OJ), 800)
+train <- OJ[sample_set,]
+test <- OJ[-sample_set,]
+
+
+#b
+library(tree)
+tree.OJ = tree(Purchase ~., data = train)
+summary(tree.OJ)
+
+```
+
+9b. The tree has 8 terminal nodes and has a misclassification error rate of 16.5%. The variables used in its construction were: loyalCH, price difference, specialCH, and list price difference. 
+
+```{r}
+#c
+tree.OJ
+```
+
+9c. Looking at terminal node (8). Starting from the root, LoyalCH was less than 0.508, so we go left. LoyalCH is also less than 0.264, so we go left again. Lastly, LoyalCH is less than 0.0356, so we determine the result is Minute Maid OJ. This branch only used LoyalCH to split the feature space. 
+
+```{r}
+#d
+plot(tree.OJ)
+text(tree.OJ, pretty = 0)
+```
+
+
+9d. This tree had 7 total branches to end in 8 terminal nodes. It determined 5/8 nodes to be Citrus Hill. LoyalCH appears to be the most important variable to split the feature space as it is used in 4/7 of the splits. Price difference, SpecialCH, and ListPriceDiff were also used. 
+
+```{r}
+#e
+tree.pred <- predict(tree.OJ, test, type = "class")
+table(tree.pred, test$Purchase)
+test_error <- (49+12)/(270)
+test_error
+```
+
+9e. The misclassification error rate was 22.6%. 
+
+```{r}
+#9f
+cv.OJ <- cv.tree(tree.OJ, FUN = prune.misclass)
+cv.OJ
+```
+
+9f. The ideal pruned tree size is two trees, as there is no difference between 2, 5, and 8 so we choose the smallest option.
+
+```{r}
+#9g 
+par(mfrow = c(1,2))
+plot(cv.OJ$size, cv.OJ$dev, type = "b")
+```
+
+9h. This plot confirms that a tree size of 2 gives us the smallest cross-validated classification error test rate. 
+
+```{r}
+#9i
+prune.OJ <- prune.misclass(tree.OJ, best = 2)
+plot(prune.OJ)
+text(prune.OJ, pretty = 0)
+```
+
+9i. This is the pruned tree corresponding to the optimal tree size based on cross-validation. Using purely whether LoyalCH is less than 0.509, we can determine whether a purchased item was Minute Maid or Citrus Hill. 
+
+```{r}
+#9j
+summary(prune.OJ)
+summary(tree.OJ)
+
+```
+9j. The pruned tree does have a slightly higher misclassification training error rate (18.25%) versus the unpruned tree (16.5%), but saves on 6 terminal nodes and 5 branches. 
+
+
+```{r}
+tree.pred <- predict(tree.OJ, test, type = "class")
+table(tree.pred, test$Purchase)
+test_error_unprune <- (49+12)/(270)
+test_error_unprune
+
+tree.pred.prune <- predict(prune.OJ, test, type = "class")
+table(tree.pred.prune, test$Purchase)
+test_error_prune <- (30+40)/(270)
+test_error_prune
+
+```
+9k. the test error rate for the unpruned tree is 25.9% versus the pruned tree of 22.6%. 
+
+
+#10 
+```{r}
+library(gbm)
+library(dplyr)
+
+#a
+hitters <- Hitters %>% filter(!is.na(Salary)) %>% mutate(Salary = log(Salary))
+
+#b
+train_set <- hitters[1:200,]
+test_set <- hitters[201:nrow(hitters),]
+
+#c 
+exp <- seq(-10, 0.1, by = 0.1)
+lambda <- 10**exp
+train.err <- rep(NA, length(lambda))
+for (i in 1:length(lambda)) {
+    boost.hitters <- gbm(Salary ~ ., data = train_set, distribution = "gaussian", n.trees = 1000, shrinkage = lambda[i])
+    pred.train <- predict(boost.hitters, train_set, n.trees = 1000)
+    train.err[i] <- mean((pred.train - train_set$Salary)^2)
+}
+plot(lambda, train.err, type = "b", xlab = "Shrinkage values", ylab = "Training MSE")
+```
+
+10c. The best lambda appears to be quite small, close to 0.2 based on the training set. 
+
+```{r}
+#d
+exp <- seq(-8, 0.1, by = 0.1)
+lambda <- 10**exp
+test.err <- rep(NA, length(lambda))
+for (i in 1:length(lambda)) {
+    boost.hitters <- gbm(Salary ~ ., data = test_set, distribution = "gaussian", n.trees = 1000, shrinkage = lambda[i])
+    pred.test <- predict(boost.hitters, test_set, n.trees = 1000)
+    test.err[i] <- mean((pred.test - test_set$Salary)^2)
+}
+plot(lambda, test.err, type = "b", xlab = "Shrinkage values", ylab = "Test MSE")
+lambda[which.min(test.err)]
+```
+10d. Using the test set and searching for lambdas between 10^(-8) and 10^0.1, the best lambda is 1. 
+
+```{r}
+#e
+boost.hitters <- gbm(Salary ~ ., data = test_set, distribution = "gaussian", n.trees = 1000, shrinkage = 1)
+pred.test <- predict(boost.hitters, test_set, n.trees = 1000)
+test.err <- mean((pred.test - test_set$Salary)^2)
+test.err
+
+
+# lasso
+library(glmnet)
+library(pls)
+library(leaps)
+train_matrix = model.matrix(Salary ~., data = train_set)
+test_matrix = model.matrix(Salary~ ., data = test_set)
+cv.out <- cv.glmnet(train_matrix, train_set$Salary, alpha=0) 
+plot(cv.out) 
+bestlam = cv.out$lambda.min
+bestlam
+
+lasso.mod <- glmnet(train_matrix, train_set$Salary, alpha = 1, lambda = bestlam)
+lasso.pred <- predict(lasso.mod, s = bestlam, newx = test_matrix)
+test.lasso.error <- mean((lasso.pred - test_set$Salary)^2)
+test.lasso.error
+# plain linear regression
+lm.1 <- lm(Salary ~ ., data = train_set)
+pred.salary <- predict(lm.1, test_set)
+test.lm.error<- mean((test_set$Salary - pred.salary)^2)
+test.lm.error
+```
+
+10e. Using lasso (using a cross-validated lambda of 0.2811647), boosting, and regular linear regression with all predictors in the model, boosting has the best test MSE. Boosting has the best MSE of 4.659978e-8, followed by the lasso with an MSE of 0.4441547, and linear regression was the worst with an MSE of 0.4917959. 
+
+
+```{r}
+#f
+summary(boost.hitters)
+
+```
+10f. The best predictor was CHmRun (rel.inf = 19.84), followed by PutOuts (rel.inf = 11.562).
+
+```{r}
+#g 
+set.seed(1)
+p <- ncol(test_set) - 1
+bag.hitters <- randomForest(Salary ~., data = train_set, mtry = p, ntree = 500)
+yhat.bag <- predict(bag.hitters, newdata = test_set)
+mean((yhat.bag - test_set$Salary)^2)
+
+```
+10g. The test MSE using bagging was 0.2299. 
+
+
